@@ -1,0 +1,29 @@
+{
+  "teacher": {
+    "name": "ครูสมชาย สอนดี",
+    "department": "แผนกคอมพิวเตอร์"
+  },
+  "criteria": [
+    {
+      "id": 1,
+      "title": "การเตรียมการสอน",
+      "score": null,
+      "pass": true,
+      "note": ""
+    },
+    {
+      "id": 2,
+      "title": "การจัดกิจกรรมการเรียนรู้",
+      "score": null,
+      "pass": true,
+      "note": ""
+    },
+    {
+      "id": 3,
+      "title": "การวัดผลและประเมินผล",
+      "score": null,
+      "pass": true,
+      "note": ""
+    }
+  ]
+}

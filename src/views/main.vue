@@ -1,0 +1,26 @@
+<template>
+  <div class="w-full min-h-screen flex items-center justify-center bg-gray-100 " style="font-family: 'Prompt', sans-serif;">
+    <main class="w-full max-w-4xl px-6 py-8 bg-white rounded-lg shadow-md">
+
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">
+        ยินดีต้อนรับเข้าสู่ระบบประเมินบุคลากร
+        </h2>
+        <p class="text-gray-600 mb-6 text-center">
+          ระบบนี้ถูกออกแบบมาเพื่อให้ผู้บริหารและบุคลากรสามารถประเมินผลการปฏิบัติงานได้อย่างสะดวกสามารถกรอกแบบประเมิน 
+          <br/>ดูรายงาน และสรุปผลคะแนนได้ในที่เดียว
+        </p>
+
+
+    </main>
+  </div>
+   
+  <footer class="bg-white text-center py-4 text-gray-500 text-sm mt-8" style="font-family: 'Prompt', sans-serif;">
+    © 2025 วิทยาลัยเทคนิคขอนแก่น — ระบบประเมินบุคลากร
+  </footer>
+</template>
+
+<script>
+export default {
+  name: "MainView",
+};
+</script>
