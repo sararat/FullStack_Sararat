@@ -1,32 +1,11 @@
 services:
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: hrsystem_frontend
-    ports:
-      - "5173:5173"
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: hrsystem_backend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - mysql
-    restart: unless-stopped
 
   mysql:
     image: mysql:8.0
     container_name: hrsystem_mysql
 
     environment:
-      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: hrsystem
 
     ports:
@@ -34,6 +13,43 @@ services:
 
     volumes:
       - mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+
+    container_name: hrsystem_frontend
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped
+    
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+
+    container_name: hrsystem_backend
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    restart: unless-stopped
 
 
   phpmyadmin:
@@ -48,7 +64,8 @@ services:
       - "8080:80"
 
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
 
 volumes:
