@@ -3,8 +3,8 @@ import { useAuthStore } from '../src/stores/auth.js';
 
 // views
 import Main from '../src/views/main.vue'
-import NotFound from '../src/views/NotFound.vue'
-import EvaluationForm from '../src/views/evaluationform.vue'
+import NotFound from '../src/views/notfound.vue'
+import EvaluationForm from '../src/components/evaluator/evaluationform.vue'
 
 // pages
 import ProfilePage from '../src/pages/profilepage.vue'

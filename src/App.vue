@@ -1,5 +1,5 @@
 <script setup>
-import MyBar from './views/MyBar.vue';
+import MyBar from '../src/views/mybar.vue'
 </script>
 <template>
   <div id="app">

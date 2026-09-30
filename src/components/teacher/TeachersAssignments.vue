@@ -14,7 +14,7 @@
 </template>
 
 <script>
-import TeacherForm from "../../views/teacherform.vue";
+import TeacherForm from "../teacher/teacherForm.vue";
 import jsonData from "../../resource/criteria.json";
 export default {
   name: "TeachersAssignments",
