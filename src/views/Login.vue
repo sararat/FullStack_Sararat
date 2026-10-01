@@ -1,8 +1,12 @@
 <template>
 
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
+  <div
+    class="min-h-screen flex items-center justify-center bg-gray-100"
+  >
 
-    <div class="bg-white w-full max-w-md p-8 rounded-2xl shadow-lg">
+    <div
+      class="bg-white w-full max-w-md p-8 rounded-2xl shadow-lg"
+    >
 
       <h1 class="text-3xl font-bold text-center mb-2">
         HRsystem
@@ -14,7 +18,6 @@
 
 
       <!-- Username -->
-
       <div class="mb-4">
 
         <label class="block mb-2 font-medium">
@@ -25,14 +28,15 @@
           v-model="form.username"
           type="text"
           placeholder="กรอก Username"
-          class="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full border rounded-lg px-4 py-3
+                 focus:outline-none
+                 focus:ring-2 focus:ring-blue-500"
         />
 
       </div>
 
 
       <!-- Password -->
-
       <div class="mb-6">
 
         <label class="block mb-2 font-medium">
@@ -43,7 +47,9 @@
           v-model="form.password"
           type="password"
           placeholder="กรอก Password"
-          class="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full border rounded-lg px-4 py-3
+                 focus:outline-none
+                 focus:ring-2 focus:ring-blue-500"
           @keyup.enter="login"
         />
 
@@ -51,30 +57,33 @@
 
 
       <!-- Error -->
-
       <div
         v-if="error"
-        class="bg-red-100 text-red-600 p-3 rounded-lg mb-4"
+        class="bg-red-100 text-red-600
+               p-3 rounded-lg mb-4"
       >
         {{ error }}
       </div>
 
 
       <!-- Login -->
-
       <button
         @click="login"
         :disabled="loading"
-        class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
+        class="w-full bg-blue-600 text-white
+               py-3 rounded-lg
+               hover:bg-blue-700
+               disabled:opacity-50"
       >
-
-        {{ loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ" }}
-
+        {{
+          loading
+            ? "กำลังเข้าสู่ระบบ..."
+            : "เข้าสู่ระบบ"
+        }}
       </button>
 
 
       <!-- Signup -->
-
       <div class="text-center mt-6">
 
         <span class="text-gray-500">
@@ -105,16 +114,17 @@ import axios from "axios";
 
 import { useRouter } from "vue-router";
 
+import { useAuthStore } from "../stores/auth.js";
+
 
 const router = useRouter();
 
+const auth = useAuthStore();
+
 
 const form = ref({
-
   username: "",
-
   password: ""
-
 });
 
 
@@ -140,7 +150,6 @@ const login = async () => {
       "กรุณากรอก Username และ Password";
 
     return;
-
   }
 
 
@@ -149,68 +158,117 @@ const login = async () => {
     loading.value = true;
 
 
+    // ===============================
+    // ส่ง Login ไป Backend
+    // ===============================
+
     const response = await axios.post(
       "http://localhost:3000/login",
-      form.value
+      {
+        username: form.value.username,
+        password: form.value.password
+      }
     );
 
 
     const data = response.data;
 
 
-    // เก็บ Token
-    localStorage.setItem(
-      "token",
+    // ===============================
+    // ตรวจสอบข้อมูลจาก Backend
+    // ===============================
+
+    if (
+      !data.token ||
+      !data.user
+    ) {
+
+      error.value =
+        "ข้อมูล Login จาก Server ไม่ถูกต้อง";
+
+      return;
+    }
+
+
+    // ===============================
+    // สำคัญ
+    // บันทึกเข้า Pinia
+    // ===============================
+
+    auth.login(
+      data.user,
       data.token
     );
 
 
-    // เก็บ User
-    localStorage.setItem(
-      "user",
-      JSON.stringify(data.user)
+    // ===============================
+    // แยกหน้า ตาม Role
+    // ===============================
+
+    switch (data.user.role) {
+
+      case "personnel":
+
+        await router.push("/personnel");
+
+        break;
+
+
+      case "evaluatee":
+
+        await router.push("/evaluatee");
+
+        break;
+
+
+      case "evaluator":
+
+        await router.push("/evaluator");
+
+        break;
+
+
+      default:
+
+        error.value =
+          "ไม่พบสิทธิ์การใช้งาน";
+
+        auth.logout();
+
+        return;
+    }
+
+
+  } catch (err) {
+
+    console.error(
+      "LOGIN ERROR:",
+      err
     );
 
 
-    // =================================================
-    // แยกหน้า ตาม Role
-    // =================================================
+    if (err.response) {
 
-    if (data.user.role === "personnel") {
-
-      router.push("/personnel");
+      error.value =
+        err.response.data?.message ||
+        `เข้าสู่ระบบไม่สำเร็จ (${err.response.status})`;
 
     }
 
-    else if (
-      data.user.role === "evaluatee"
-    ) {
+    else if (err.request) {
 
-      router.push("/evaluatee");
-
-    }
-
-    else if (
-      data.user.role === "evaluator"
-    ) {
-
-      router.push("/evaluator");
+      error.value =
+        "ไม่สามารถเชื่อมต่อ Backend ได้";
 
     }
 
     else {
 
       error.value =
-        "ไม่พบสิทธิ์การใช้งาน";
+        "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
 
     }
 
-
-  } catch (err) {
-
-    error.value =
-      err.response?.data?.message ||
-      "เข้าสู่ระบบไม่สำเร็จ";
 
   } finally {
 
@@ -221,3 +279,4 @@ const login = async () => {
 };
 
 </script>
+

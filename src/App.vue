@@ -1,15 +1,15 @@
+```vue
 <script setup>
-import MyBar from '../src/views/mybar.vue'
+import MyBar from "./views/mybar.vue";
 </script>
+
 <template>
   <div id="app">
     <MyBar />
-    <router-view />
+
+    <main class="pt-16">
+      <router-view />
+    </main>
   </div>
 </template>
-<script>
-export default {
- name :"App",
- components : {
-  MyBar },};
-</script>
+```
