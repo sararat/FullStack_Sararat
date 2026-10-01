@@ -1,5 +1,6 @@
 <template>
-  <div class="w-full min-h-screen flex items-center justify-center bg-gray-100 " style="font-family: 'Prompt', sans-serif;">
+  <div class="w-full min-h-screen flex items-center justify-center bg-gray-100 " 
+  style="font-family: 'Prompt', sans-serif;">
     <main class="w-full max-w-4xl px-6 py-8 bg-white rounded-lg shadow-md">
 
       <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">

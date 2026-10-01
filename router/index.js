@@ -53,6 +53,12 @@ const routes = [
     props: true,
     meta: { requiresAuth: true }
   },
+  {
+    path: "/evaluatee/assignments/:id",
+    name: "TeachersAssignments",
+    component: () =>
+    import("../components/teacher/TeachersAssignments.vue")
+  },
 
   {
     path: '/reports',

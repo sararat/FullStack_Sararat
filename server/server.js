@@ -1,253 +1,169 @@
-import express from 'express';
-import cors from 'cors';
-import { compare, hash } from 'bcryptjs';
-import db from './db.js';
-import jwt from 'jsonwebtoken';
-import multer, { diskStorage } from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import express from "express";
+import cors from "cors";
+import { hash, compare } from "bcryptjs";
+import jwt from "jsonwebtoken";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import db from "./db.js";
+import dotenv from "dotenv";
 
-
-// =====================================================
-// 1. ตั้งค่า Server
-// =====================================================
+dotenv.config();
 
 const app = express();
-const port = 3000;
+const PORT = 3000;
+const SECRET = process.env.JWT_SECRET || "hr_secret";
 
-const { sign, verify } = jwt;
+const __dirname = path.dirname(
+  fileURLToPath(import.meta.url)
+);
 
+const uploadPath = path.join(__dirname, "uploads");
 
-// =====================================================
-// 2. ตั้งค่า Path
-// =====================================================
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const uploadPath = path.join(__dirname, 'uploads');
-
-console.log('Upload path:', uploadPath);
-
-
-// =====================================================
-// 3. Middleware
-// =====================================================
+if (!fs.existsSync(uploadPath))
+  fs.mkdirSync(uploadPath, { recursive: true });
 
 app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
+  origin: "http://localhost:5173"
 }));
 
 app.use(express.json());
+app.use("/uploads", express.static(uploadPath));
 
 
-// =====================================================
-// 4. Static สำหรับรูปภาพ
-// =====================================================
-
-app.use(
-  '/uploads',
-  express.static(uploadPath)
-);
-
-
-// =====================================================
-// 5. Multer สำหรับ Upload Avatar
-// =====================================================
-
-const storage = diskStorage({
-
-  destination: function (req, file, cb) {
-    cb(null, uploadPath);
-  },
-
-  filename: function (req, file, cb) {
-
-    const uniqueName =
-      Date.now() + '-' + file.originalname;
-
-    cb(null, uniqueName);
-  }
-
-});
+// ===============================
+// Upload
+// ===============================
 
 const upload = multer({
-  storage: storage
+  dest: uploadPath,
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  }
 });
 
 
-// =====================================================
-// 6. JWT ตรวจสอบ Token
-// =====================================================
+// ===============================
+// JWT
+// ===============================
 
-const verifyToken = (req, res, next) => {
+function auth(req, res, next) {
 
-  const authHeader = req.headers.authorization;
+  const token =
+    req.headers.authorization?.split(" ")[1];
 
-  if (!authHeader) {
-    return res.status(403).json({
-      message: 'No token provided'
+  if (!token)
+    return res.status(401).json({
+      message: "กรุณาเข้าสู่ระบบ"
     });
-  }
 
-  const token = authHeader.split(' ')[1];
+  try {
 
-  if (!token) {
-    return res.status(403).json({
-      message: 'Token missing'
+    req.user = jwt.verify(
+      token,
+      SECRET
+    );
+
+    next();
+
+  } catch {
+
+    res.status(401).json({
+      message: "Token ไม่ถูกต้องหรือหมดอายุ"
     });
+
   }
-
-  verify(
-    token,
-    'your_secret_key',
-    (err, decoded) => {
-
-      if (err) {
-        return res.status(401).json({
-          message: 'Invalid token'
-        });
-      }
-
-      req.user = decoded;
-
-      next();
-    }
-  );
-};
+}
 
 
-// =====================================================
-// 7. Test API
-// =====================================================
+function role(...roles) {
 
-app.get('/', (req, res) => {
+  return (req, res, next) => {
 
+    if (!roles.includes(req.user.role))
+      return res.status(403).json({
+        message: "ไม่มีสิทธิ์ใช้งาน"
+      });
+
+    next();
+  };
+
+}
+
+
+// ===============================
+// Test
+// ===============================
+
+app.get("/", (req, res) => {
   res.json({
-    message: 'HRsystem API is running'
+    message: "HRsystem API is running"
   });
-
 });
 
 
-// =====================================================
-// 8. LOGIN
-// =====================================================
+// ===============================
+// LOGIN
+// ===============================
 
-app.post('/login', (req, res) => {
+app.post("/login", (req, res) => {
 
-  const {
-    username,
-    password
-  } = req.body;
+  const { username, password } = req.body;
 
-
-  if (!username || !password) {
-
+  if (!username || !password)
     return res.status(400).json({
-      error: 'Username or password missing'
+      message: "กรุณากรอก Username และ Password"
     });
-
-  }
-
-
-  const sql =
-    'SELECT * FROM users WHERE username = ?';
-
 
   db.query(
-    sql,
+    "SELECT * FROM users WHERE username = ?",
     [username],
-    (err, results) => {
+    async (err, rows) => {
 
-      if (err) {
-
-        console.error(
-          'LOGIN DATABASE ERROR:',
-          err
-        );
-
+      if (err)
         return res.status(500).json({
-          error: 'Database error',
-          message: err.message
+          message: "Database error"
         });
 
-      }
-
-
-      if (results.length === 0) {
-
+      if (!rows.length)
         return res.status(401).json({
-          error: 'Invalid username or password'
+          message: "Username หรือ Password ไม่ถูกต้อง"
         });
 
-      }
+      const user = rows[0];
 
-
-      const user = results[0];
-
-
-      compare(
+      const ok = await compare(
         password,
-        user.password,
-        (err, isMatch) => {
-
-          if (err) {
-
-            console.error(
-              'BCRYPT ERROR:',
-              err
-            );
-
-            return res.status(500).json({
-              error: 'Bcrypt error'
-            });
-
-          }
-
-
-          if (!isMatch) {
-
-            return res.status(401).json({
-              error: 'Invalid password'
-            });
-
-          }
-
-
-          const token = sign(
-            {
-              id: user.id,
-              username: user.username,
-              role: user.role
-            },
-
-            'your_secret_key',
-
-            {
-              expiresIn: '1h'
-            }
-          );
-
-
-          res.json({
-
-            token,
-
-            user: {
-              id: user.id,
-              fname: user.fname,
-              lname: user.lname,
-              username: user.username,
-              role: user.role,
-              avatar: user.avatar
-            }
-
-          });
-
-        }
+        user.password
       );
+
+      if (!ok)
+        return res.status(401).json({
+          message: "Username หรือ Password ไม่ถูกต้อง"
+        });
+
+      const token = jwt.sign(
+        {
+          id: user.id,
+          username: user.username,
+          role: user.role
+        },
+        SECRET,
+        { expiresIn: "1h" }
+      );
+
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          fname: user.fname,
+          lname: user.lname,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar
+        }
+      });
 
     }
   );
@@ -255,172 +171,75 @@ app.post('/login', (req, res) => {
 });
 
 
-// =====================================================
-// 9. SIGN UP
-// =====================================================
+// ===============================
+// SIGNUP
+// ===============================
 
 app.post(
-  '/signup',
-  upload.single('avatar'),
+  "/signup",
+  upload.single("avatar"),
   async (req, res) => {
+
+    const {
+      fname,
+      lname,
+      username,
+      password,
+      role
+    } = req.body;
+
+    if (
+      !fname ||
+      !lname ||
+      !username ||
+      !password ||
+      !role
+    )
+      return res.status(400).json({
+        message: "กรุณากรอกข้อมูลให้ครบ"
+      });
 
     try {
 
-      console.log('');
-      console.log('================================');
-      console.log('SIGNUP REQUEST');
-      console.log('================================');
-
-      console.log('BODY:', req.body);
-      console.log('FILE:', req.file);
-
-
-      const {
-        fname,
-        lname,
-        username,
-        password,
-        role
-      } = req.body;
-
-
-      const avatar =
-        req.file
-          ? req.file.filename
-          : null;
-
-
-      // -----------------------------------------------
-      // ตรวจสอบข้อมูล
-      // -----------------------------------------------
-
-      if (
-        !fname ||
-        !lname ||
-        !username ||
-        !password ||
-        !role
-      ) {
-
-        return res.status(400).json({
-          message: 'All fields are required'
-        });
-
-      }
-
-
-      // -----------------------------------------------
-      // เข้ารหัส Password
-      // -----------------------------------------------
-
-      const hashedPassword =
+      const passwordHash =
         await hash(password, 10);
 
-
-      // -----------------------------------------------
-      // SQL INSERT
-      // -----------------------------------------------
-
-      const sql = `
-        INSERT INTO users
-        (
-          fname,
-          lname,
-          username,
-          password,
-          avatar,
-          role
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-      `;
-
+      const avatar =
+        req.file?.filename || null;
 
       db.query(
-        sql,
+        `INSERT INTO users
+        (fname,lname,username,password,avatar,role)
+        VALUES (?,?,?,?,?,?)`,
 
         [
           fname,
           lname,
           username,
-          hashedPassword,
+          passwordHash,
           avatar,
           role
         ],
 
         (err, result) => {
 
-          if (err) {
-
-            console.error('');
-            console.error(
-              'DATABASE ERROR:',
-              err
-            );
-
-
-            // Username ซ้ำ
-            if (
-              err.code === 'ER_DUP_ENTRY'
-            ) {
-
-              return res.status(409).json({
-                message:
-                  'Username already exists'
-              });
-
-            }
-
-
+          if (err)
             return res.status(500).json({
-
-              message:
-                'Database error',
-
-              error:
-                err.message
-
+              message: "สร้างผู้ใช้ไม่สำเร็จ"
             });
 
-          }
-
-
-          console.log(
-            'SIGNUP SUCCESS'
-          );
-
-
-          return res.status(201).json({
-
-            message:
-              'Signup successful',
-
-            userId:
-              result.insertId
-
+          res.status(201).json({
+            message: "Signup successful",
+            userId: result.insertId
           });
 
         }
       );
 
-    }
+    } catch {
 
-    catch (error) {
-
-      console.error('');
-      console.error(
-        'SIGNUP ERROR:',
-        error
-      );
-
-
-      return res.status(500).json({
-
-        message:
-          'Server error',
-
-        error:
-          error.message
-
+      res.status(500).json({
+        message: "Server error"
       });
 
     }
@@ -429,344 +248,396 @@ app.post(
 );
 
 
-// =====================================================
-// 10. GET USERS
-// =====================================================
-
-app.get('/users', (req, res) => {
-
-  db.query(
-    'SELECT * FROM users',
-
-    (err, results) => {
-
-      if (err) {
-
-        console.error(
-          'GET USERS ERROR:',
-          err
-        );
-
-        return res.status(500).json({
-
-          message:
-            'Database error',
-
-          error:
-            err.message
-
-        });
-
-      }
-
-
-      res.json(results);
-
-    }
-  );
-
-});
-
-
-// =====================================================
-// 11. GET USER BY ID
-// =====================================================
-
-app.get('/users/:id', (req, res) => {
-
-  const {
-    id
-  } = req.params;
-
-
-  db.query(
-    'SELECT * FROM users WHERE id = ?',
-
-    [id],
-
-    (err, results) => {
-
-      if (err) {
-
-        console.error(
-          'GET USER ERROR:',
-          err
-        );
-
-        return res.status(500).json({
-
-          message:
-            'Database error',
-
-          error:
-            err.message
-
-        });
-
-      }
-
-
-      if (
-        results.length === 0
-      ) {
-
-        return res.status(404).json({
-
-          message:
-            'User not found'
-
-        });
-
-      }
-
-
-      res.json(
-        results[0]
-      );
-
-    }
-  );
-
-});
-
-
-// =====================================================
-// 12. DASHBOARD
-// =====================================================
+// ===============================
+// USERS
+// ===============================
 
 app.get(
-  '/dashboard',
-  verifyToken,
+  "/users",
+  auth,
+  role("admin"),
   (req, res) => {
 
-    if (
-      req.user.role !== 'admin'
-    ) {
+    db.query(
+      `SELECT id,fname,lname,username,role,avatar
+       FROM users`,
+      (err, rows) => {
 
-      return res.status(403).json({
+        if (err)
+          return res.status(500).json({
+            message: "Database error"
+          });
 
-        message:
-          'Not authorized'
+        res.json(rows);
 
+      }
+    );
+
+  }
+);
+
+
+app.get(
+  "/users/:id",
+  auth,
+  (req, res) => {
+
+    db.query(
+      `SELECT id,fname,lname,username,role,avatar
+       FROM users
+       WHERE id = ?`,
+      [req.params.id],
+      (err, rows) => {
+
+        if (err)
+          return res.status(500).json({
+            message: "Database error"
+          });
+
+        if (!rows.length)
+          return res.status(404).json({
+            message: "ไม่พบผู้ใช้"
+          });
+
+        res.json(rows[0]);
+
+      }
+    );
+
+  }
+);
+
+
+// ===============================
+// EVALUATION
+// ===============================
+
+app.get(
+  "/api/evaluation/:id",
+  auth,
+  async (req, res) => {
+
+    try {
+
+      const [teacher] = await db.query(`
+        SELECT
+          e.id,
+          e.employee_code,
+          e.name,
+          e.position,
+          d.name AS department
+        FROM employees e
+        LEFT JOIN departments d
+          ON e.department_id = d.id
+        WHERE e.id = ?
+      `, [req.params.id]);
+
+      if (!teacher.length)
+        return res.status(404).json({
+          message: "ไม่พบข้อมูลบุคลากร"
+        });
+
+      const [criteria] = await db.query(`
+        SELECT
+          id,
+          code,
+          name,
+          description,
+          weight,
+          max_score
+        FROM indicators
+        WHERE active = 1
+        ORDER BY code
+      `);
+
+      res.json({
+        teacher: teacher[0],
+        criteria
+      });
+
+    } catch {
+
+      res.status(500).json({
+        message: "โหลดข้อมูลไม่สำเร็จ"
       });
 
     }
 
+  }
+);
+
+
+// ===============================
+// SAVE DRAFT
+// ===============================
+
+app.post(
+  "/api/self-assessment/draft",
+  auth,
+  upload.any(),
+  async (req, res) => {
+
+    const conn =
+      await db.getConnection();
+
+    try {
+
+      const {
+        employee_id,
+        period_id
+      } = req.body;
+
+      const assessments =
+        JSON.parse(
+          req.body.assessments || "[]"
+        );
+
+      await conn.beginTransaction();
+
+      for (const item of assessments) {
+
+        await conn.query(
+          `INSERT INTO self_assessments
+          (employee_id,indicator_id,period_id,
+           score,description,status)
+          VALUES (?,?,?,?,?,'draft')
+          ON DUPLICATE KEY UPDATE
+          score=VALUES(score),
+          description=VALUES(description),
+          updated_at=CURRENT_TIMESTAMP`,
+
+          [
+            employee_id,
+            item.indicator_id,
+            period_id,
+            item.score ?? null,
+            item.note || ""
+          ]
+        );
+
+        const [rows] =
+          await conn.query(
+            `SELECT id
+             FROM self_assessments
+             WHERE employee_id=?
+             AND indicator_id=?
+             AND period_id=?`,
+
+            [
+              employee_id,
+              item.indicator_id,
+              period_id
+            ]
+          );
+
+        if (!rows.length) continue;
+
+        const files = req.files.filter(
+          file =>
+            file.fieldname ===
+            `evidence_${item.indicator_id}`
+        );
+
+        for (const file of files) {
+
+          await conn.query(
+            `INSERT INTO evidence_files
+            (assessment_id,file_name,
+             file_path,file_type,file_size)
+            VALUES (?,?,?,?,?)`,
+
+            [
+              rows[0].id,
+              file.originalname,
+              `/uploads/${file.filename}`,
+              file.mimetype,
+              file.size
+            ]
+          );
+
+        }
+
+      }
+
+      await conn.commit();
+
+      res.json({
+        success: true,
+        message: "บันทึกข้อมูลเรียบร้อย"
+      });
+
+    } catch (error) {
+
+      await conn.rollback();
+
+      res.status(500).json({
+        success: false,
+        message: "บันทึกข้อมูลไม่สำเร็จ",
+        error: error.message
+      });
+
+    } finally {
+
+      conn.release();
+
+    }
+
+  }
+);
+
+
+// ===============================
+// SUBMIT
+// ===============================
+
+app.post(
+  "/api/self-assessment/submit",
+  auth,
+  async (req, res) => {
+
+    try {
+
+      const {
+        employee_id,
+        period_id
+      } = req.body;
+
+      await db.query(
+        `UPDATE self_assessments
+         SET status='submitted',
+         updated_at=CURRENT_TIMESTAMP
+         WHERE employee_id=?
+         AND period_id=?`,
+
+        [
+          employee_id,
+          period_id
+        ]
+      );
+
+      res.json({
+        success: true,
+        message: "ส่งแบบประเมินเรียบร้อย"
+      });
+
+    } catch {
+
+      res.status(500).json({
+        success: false,
+        message: "ส่งแบบประเมินไม่สำเร็จ"
+      });
+
+    }
+
+  }
+);
+
+
+// ===============================
+// DASHBOARD
+// ===============================
+
+app.get(
+  "/dashboard",
+  auth,
+  role("admin"),
+  (req, res) => {
 
     res.json({
-
-      message:
-        'Welcome Admin!'
-
+      message: "Welcome Admin!"
     });
 
   }
 );
 
 
-// =====================================================
-// 13. UPDATE USER
-// =====================================================
+// ===============================
+// UPDATE USER
+// ===============================
 
-app.put('/users/:id', (req, res) => {
+app.put(
+  "/users/:id",
+  auth,
+  role("admin"),
+  (req, res) => {
 
-  const {
-    fname,
-    lname,
-    username
-  } = req.body;
-
-
-  const {
-    id
-  } = req.params;
-
-
-  const sql = `
-    UPDATE users
-    SET
-      fname = ?,
-      lname = ?,
-      username = ?
-    WHERE id = ?
-  `;
-
-
-  db.query(
-    sql,
-
-    [
+    const {
       fname,
       lname,
       username,
-      id
-    ],
+      role
+    } = req.body;
 
-    (err) => {
+    db.query(
+      `UPDATE users
+       SET fname=?,lname=?,username=?,role=?
+       WHERE id=?`,
 
-      if (err) {
+      [
+        fname,
+        lname,
+        username,
+        role,
+        req.params.id
+      ],
 
-        console.error(
-          'UPDATE USER ERROR:',
-          err
-        );
+      err => {
 
-
-        if (
-          err.code === 'ER_DUP_ENTRY'
-        ) {
-
-          return res.status(409).json({
-
-            message:
-              'Username already exists'
-
+        if (err)
+          return res.status(500).json({
+            message: "แก้ไขไม่สำเร็จ"
           });
 
-        }
-
-
-        return res.status(500).json({
-
-          message:
-            'Database error',
-
-          error:
-            err.message
-
+        res.json({
+          message: "User updated"
         });
 
       }
-
-
-      res.json({
-
-        message:
-          'User updated'
-
-      });
-
-    }
-  );
-
-});
-
-
-// =====================================================
-// 14. DELETE USER
-// =====================================================
-
-app.delete('/users/:id', (req, res) => {
-
-  const {
-    id
-  } = req.params;
-
-
-  db.query(
-    'DELETE FROM users WHERE id = ?',
-
-    [id],
-
-    (err) => {
-
-      if (err) {
-
-        console.error(
-          'DELETE USER ERROR:',
-          err
-        );
-
-        return res.status(500).json({
-
-          message:
-            'Database error',
-
-          error:
-            err.message
-
-        });
-
-      }
-
-
-      res.json({
-
-        message:
-          'User deleted'
-
-      });
-
-    }
-  );
-
-});
-
-
-// =====================================================
-// 15. Global Error Handler
-// =====================================================
-
-app.use(
-  (err, req, res, next) => {
-
-    console.error(
-      '================================'
     );
-
-    console.error(
-      'SERVER ERROR:'
-    );
-
-    console.error(err);
-
-    console.error(
-      '================================'
-    );
-
-
-    res.status(500).json({
-
-      message:
-        'Internal Server Error',
-
-      error:
-        err.message
-
-    });
 
   }
 );
 
 
-// =====================================================
-// 16. Start Server
-// =====================================================
+// ===============================
+// DELETE USER
+// ===============================
 
-app.listen(
-  port,
-  () => {
+app.delete(
+  "/users/:id",
+  auth,
+  role("admin"),
+  (req, res) => {
 
-    console.log('');
-    console.log(
-      '================================'
-    );
+    db.query(
+      "DELETE FROM users WHERE id=?",
+      [req.params.id],
+      err => {
 
-    console.log(
-      `Server running at http://localhost:${port}/`
-    );
+        if (err)
+          return res.status(500).json({
+            message: "ลบไม่สำเร็จ"
+          });
 
-    console.log(
-      '================================'
-    );
+        res.json({
+          message: "User deleted"
+        });
 
-    console.log(
-      'Database: MySQL'
-    );
-
-    console.log(
-      `Upload folder: ${uploadPath}`
+      }
     );
 
   }
 );
+
+
+// ===============================
+// START
+// ===============================
+
+app.listen(PORT, () => {
+
+  console.log(
+    `Server running: http://localhost:${PORT}`
+  );
+
+});
