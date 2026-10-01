@@ -16,65 +16,46 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE departments (
+CREATE TABLE evaluation_periods (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    name VARCHAR(100),
+    start_date DATE,
+    end_date DATE
 );
+INSERT INTO evaluation_periods
+(name, start_date, end_date)
+VALUES
+('รอบที่ 1/2569', '2026-01-01', '2026-06-30');
 
-CREATE TABLE employees (
+CREATE TABLE evaluation_topics (
     id INT AUTO_INCREMENT PRIMARY KEY,
-
-    employee_code VARCHAR(50) NOT NULL UNIQUE,
-
-    name VARCHAR(255) NOT NULL,
-
-    position VARCHAR(255) NOT NULL,
-
-    department_id INT NULL,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_employee_department
-        FOREIGN KEY (department_id)
-        REFERENCES departments(id)
-        ON DELETE SET NULL
-        ON UPDATE CASCADE
+    period_id INT,
+    name VARCHAR(200),
+    description TEXT
 );
-INSERT INTO departments (name)
+INSERT INTO evaluation_topics
+(period_id, name, description)
 VALUES
-('แผนกเทคโนโลยีสารสนเทศ'),
-('แผนกคอมพิวเตอร์ธุรกิจ'),
-('แผนกอิเล็กทรอนิกส์'),
-('แผนกบัญชี'),
-('แผนกบริหารธุรกิจ');
-
-INSERT INTO employees
-(
-    employee_code,
-    name,
-    position,
-    department_id
-)
-VALUES
-(
-    'EMP001',
-    'นางสาวสมหญิง ใจดี',
-    'ครู',
-    1
-),
-(
-    'EMP002',
-    'นายสมชาย รักเรียน',
-    'ครู',
-    1
-),
-(
-    'EMP003',
-    'นางสาวสุดา พัฒนา',
-    'ครู',
-    2
+(1, 'การจัดการเรียนการสอน', 'การจัดการเรียนการสอนของบุคลากร');
+CREATE TABLE evaluation_indicators (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    topic_id INT,
+    name VARCHAR(200),
+    description TEXT,
+    weight INT
 );
+INSERT INTO evaluation_indicators
+(topic_id, name, description, weight)
+VALUES
+(1, 'การจัดทำแผนการสอน', 'มีแผนการสอนครบถ้วน', 20);
+CREATE TABLE assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    evaluator_id INT,
+    employee_id INT,
+    period_id INT,
+    status VARCHAR(20)
+);
+INSERT INTO assignments
+(evaluator_id, employee_id, period_id, status)
+VALUES
+(2, 5, 1, 'รอประเมิน');
