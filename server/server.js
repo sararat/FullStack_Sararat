@@ -730,7 +730,60 @@ app.delete(
 
   }
 );
+// ===============================
+// EVALUATOR ASSIGNMENTS
+// ===============================
 
+app.get(
+  "/api/evaluator/assignments",
+  auth,
+  role("evaluator"),
+  async (req, res) => {
+
+    try {
+
+      const [rows] = await db.query(`
+        SELECT
+          a.id,
+          e.name,
+          d.name AS department,
+          p.name AS period,
+          a.status
+        FROM assignments a
+
+        JOIN employees e
+          ON a.employee_id = e.id
+
+        LEFT JOIN departments d
+          ON e.department_id = d.id
+
+        JOIN evaluation_periods p
+          ON a.period_id = p.id
+
+        WHERE a.evaluator_id = ?
+
+        ORDER BY a.id DESC
+      `, [req.user.id]);
+
+      res.json({
+        data: rows
+      });
+
+    } catch (error) {
+
+      console.error(
+        "EVALUATOR ASSIGNMENTS ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        message: "โหลดข้อมูลไม่สำเร็จ"
+      });
+
+    }
+
+  }
+);
 
 // ===============================
 // START

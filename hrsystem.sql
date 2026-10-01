@@ -15,7 +15,31 @@ CREATE TABLE users (
     avatar VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_code VARCHAR(20),
+    name VARCHAR(100),
+    position VARCHAR(100),
+    department_id INT
+);
+INSERT INTO employees
+(employee_code, name, position, department_id)
+VALUES
+('EMP001', 'นายสมชาย ใจดี', 'ครู', 1),
+('EMP002', 'นางสาวสมหญิง ดีมาก', 'ครู', 1),
+('EMP003', 'นายวิชัย เก่งงาน', 'ครูผู้ช่วย', 2),
+('EMP004', 'นายอนันต์ เทคโนโลยี', 'ครู', 3),
+('EMP005', 'นายประสิทธิ์ ช่างดี', 'ครู', 4);
+CREATE TABLE departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100)
+);
+INSERT INTO departments (name)
+VALUES
+('เทคโนโลยีสารสนเทศ'),
+('คอมพิวเตอร์ธุรกิจ'),
+('อิเล็กทรอนิกส์'),
+('ช่างยนต์');
 CREATE TABLE evaluation_periods (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
