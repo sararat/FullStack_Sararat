@@ -107,78 +107,114 @@ app.get("/", (req, res) => {
 // LOGIN
 // ===============================
 
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
 
-  const { username, password } = req.body;
+  try {
 
-  if (!username || !password)
-    return res.status(400).json({
-      message: "กรุณากรอก Username และ Password"
-    });
+    const {
+      username,
+      password
+    } = req.body;
 
-  db.query(
-    "SELECT * FROM users WHERE username = ?",
-    [username],
-    async (err, rows) => {
+    // ตรวจสอบข้อมูล
+    if (!username || !password) {
 
-      if (err)
-        return res.status(500).json({
-          message: "Database error"
-        });
-
-      if (!rows.length)
-        return res.status(401).json({
-          message: "Username หรือ Password ไม่ถูกต้อง"
-        });
-
-      const user = rows[0];
-
-      const ok = await compare(
-        password,
-        user.password
-      );
-
-      if (!ok)
-        return res.status(401).json({
-          message: "Username หรือ Password ไม่ถูกต้อง"
-        });
-
-      const token = jwt.sign(
-        {
-          id: user.id,
-          username: user.username,
-          role: user.role
-        },
-        SECRET,
-        { expiresIn: "1h" }
-      );
-
-      res.json({
-        token,
-        user: {
-          id: user.id,
-          fname: user.fname,
-          lname: user.lname,
-          username: user.username,
-          role: user.role,
-          avatar: user.avatar
-        }
+      return res.status(400).json({
+        message: "กรุณากรอก Username และ Password"
       });
 
     }
-  );
+
+    // ค้นหา User
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        fname,
+        lname,
+        username,
+        password,
+        role,
+        avatar
+      FROM users
+      WHERE username = ?
+      `,
+      [username]
+    );
+
+    // ไม่พบ User
+    if (rows.length === 0) {
+
+      return res.status(401).json({
+        message: "Username หรือ Password ไม่ถูกต้อง"
+      });
+
+    }
+
+    const user = rows[0];
+
+    // ตรวจสอบ Password
+    const validPassword = await compare(
+      password,
+      user.password
+    );
+
+    if (!validPassword) {
+
+      return res.status(401).json({
+        message: "Username หรือ Password ไม่ถูกต้อง"
+      });
+
+    }
+
+    // สร้าง JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      },
+      SECRET,
+      {
+        expiresIn: "8h"
+      }
+    );
+
+    // ส่งข้อมูลกลับ
+    res.json({
+
+      success: true,
+
+      message: "เข้าสู่ระบบสำเร็จ",
+
+      token,
+
+      user: {
+        id: user.id,
+        fname: user.fname,
+        lname: user.lname,
+        username: user.username,
+        role: user.role,
+        avatar: user.avatar
+      }
+
+    });
+
+  } catch (error) {
+
+    console.error("LOGIN ERROR:", error);
+
+    res.status(500).json({
+      message: "เกิดข้อผิดพลาดในระบบ"
+    });
+
+  }
 
 });
 
+app.post("/signup", async (req, res) => {
 
-// ===============================
-// SIGNUP
-// ===============================
-
-app.post(
-  "/signup",
-  upload.single("avatar"),
-  async (req, res) => {
+  try {
 
     const {
       fname,
@@ -188,64 +224,130 @@ app.post(
       role
     } = req.body;
 
+
+    // ตรวจสอบข้อมูล
     if (
       !fname ||
       !lname ||
       !username ||
       !password ||
       !role
-    )
+    ) {
+
       return res.status(400).json({
-        message: "กรุณากรอกข้อมูลให้ครบ"
-      });
-
-    try {
-
-      const passwordHash =
-        await hash(password, 10);
-
-      const avatar =
-        req.file?.filename || null;
-
-      db.query(
-        `INSERT INTO users
-        (fname,lname,username,password,avatar,role)
-        VALUES (?,?,?,?,?,?)`,
-
-        [
-          fname,
-          lname,
-          username,
-          passwordHash,
-          avatar,
-          role
-        ],
-
-        (err, result) => {
-
-          if (err)
-            return res.status(500).json({
-              message: "สร้างผู้ใช้ไม่สำเร็จ"
-            });
-
-          res.status(201).json({
-            message: "Signup successful",
-            userId: result.insertId
-          });
-
-        }
-      );
-
-    } catch {
-
-      res.status(500).json({
-        message: "Server error"
+        message: "กรุณากรอกข้อมูลให้ครบถ้วน"
       });
 
     }
 
+
+    // ===============================
+    // Role ที่อนุญาต
+    // ===============================
+
+    const allowedRoles = [
+      "personnel",
+      "evaluatee",
+      "evaluator"
+    ];
+
+
+    if (!allowedRoles.includes(role)) {
+
+      return res.status(400).json({
+        message: "ไม่สามารถสมัคร Role นี้ได้"
+      });
+
+    }
+
+
+    // ===============================
+    // ตรวจ Username ซ้ำ
+    // ===============================
+
+    const [existing] = await db.promise().query(
+      `
+      SELECT id
+      FROM users
+      WHERE username = ?
+      `,
+      [username]
+    );
+
+
+    if (existing.length > 0) {
+
+      return res.status(409).json({
+        message: "Username นี้ถูกใช้งานแล้ว"
+      });
+
+    }
+
+
+    // ===============================
+    // Hash Password
+    // ===============================
+
+    const hashedPassword = await hash(
+      password,
+      10
+    );
+
+
+    // ===============================
+    // เพิ่ม User
+    // ===============================
+
+    await db.promise().query(
+      `
+      INSERT INTO users
+      (
+        fname,
+        lname,
+        username,
+        password,
+        role
+      )
+      VALUES (?, ?, ?, ?, ?)
+      `,
+      [
+        fname,
+        lname,
+        username,
+        hashedPassword,
+        role
+      ]
+    );
+
+
+    // ===============================
+    // สำเร็จ
+    // ===============================
+
+    res.status(201).json({
+
+      success: true,
+
+      message: "สมัครสมาชิกสำเร็จ"
+
+    });
+
+
+  } catch (error) {
+
+    console.error("SIGNUP ERROR:", error);
+
+    res.status(500).json({
+
+      success: false,
+
+      message: "เกิดข้อผิดพลาดในระบบ"
+
+    });
+
   }
-);
+
+});
 
 
 // ===============================
@@ -255,7 +357,7 @@ app.post(
 app.get(
   "/users",
   auth,
-  role("admin"),
+  role("personnel"),
   (req, res) => {
 
     db.query(
@@ -540,7 +642,7 @@ app.post(
 app.get(
   "/dashboard",
   auth,
-  role("admin"),
+  role("personnel"),
   (req, res) => {
 
     res.json({
@@ -606,7 +708,7 @@ app.put(
 app.delete(
   "/users/:id",
   auth,
-  role("admin"),
+  role("personnel"),
   (req, res) => {
 
     db.query(

@@ -5,16 +5,15 @@ import { useAuthStore } from '../src/stores/auth.js';
 import Main from '../src/views/main.vue'
 import NotFound from '../src/views/notfound.vue'
 import EvaluationForm from '../src/components/evaluator/evaluationform.vue'
-
+import Signup from '../src/views/Signup.vue'
+import Login from '../src/views/Login.vue'
 // pages
 import ProfilePage from '../src/pages/profilepage.vue'
-import SignUp from '../src/pages/signup.vue'
-import SignIn from '../src/pages/signin.vue'
+
 
 // components
 import EvaluatorAssignments from '../src/components/evaluator/evaluatorAssignments.vue'
 import TeachersAssignments from '../src/components/teacher/TeachersAssignments.vue'
-
 const routes = [
   {
     path: '/',
@@ -22,12 +21,12 @@ const routes = [
   },
 
   {
-    path: '/signin',
-    component: SignIn
+    path: '/login',
+    component: Login
   },
   {
     path: '/signup',
-    component: SignUp
+    component: Signup
   },
 
   {
@@ -41,11 +40,7 @@ const routes = [
     component: EvaluatorAssignments,
     meta: { requiresAuth: true }
   },
-  {
-    path: '/teachers',
-    component: TeachersAssignments,
-    meta: { requiresAuth: true }
-  },
+
 
   {
     path: '/evaluator/assignments/:id',
@@ -54,10 +49,13 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: "/evaluatee/assignments/:id",
-    name: "TeachersAssignments",
-    component: () =>
-    import("../components/teacher/TeachersAssignments.vue")
+    path: '/evaluatee/assignments/:id',
+    name: 'EvaluateeAssignment',
+    component: TeachersAssignments,
+    props: true,
+    meta: {
+      requiresAuth: true
+    }
   },
 
   {

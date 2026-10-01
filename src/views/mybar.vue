@@ -40,7 +40,7 @@
                 </router-link>
               </li>
               <li>
-                <router-link to="/teachers" class="block px-4 py-2 hover:bg-blue-50">
+                <router-link to="/evaluatee/assignments/:id" class="block px-4 py-2 hover:bg-blue-50">
                   ครูผู้ถูกประเมิน
                 </router-link>
               </li>
@@ -65,9 +65,9 @@
 
           <!-- Not Login -->
           <template v-if="!auth.isLogin">
-            <router-link to="/signin" class="px-4 py-2 rounded-lg text-sm font-semibold
+            <router-link to="/login" class="px-4 py-2 rounded-lg text-sm font-semibold
                      text-slate-700 hover:bg-slate-100">
-              Sign In
+              Login
             </router-link>
             <router-link to="/signup" class="px-4 py-2 rounded-lg text-sm font-semibold
                      bg-blue-600 text-white hover:bg-blue-700">

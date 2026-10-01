@@ -34,6 +34,8 @@ services:
       - backend
 
     restart: unless-stopped
+
+    
     
   backend:
     build:
