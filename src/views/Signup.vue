@@ -15,17 +15,11 @@
 
       <div class="grid grid-cols-3 gap-3 mb-8">
 
-        <button
-          v-for="tab in tabs"
-          :key="tab.role"
-          @click="activeTab = tab.role"
-          class="border rounded-xl p-4 text-center transition"
-          :class="
-            activeTab === tab.role
+        <button v-for="tab in tabs" :key="tab.role" @click="activeTab = tab.role"
+          class="border rounded-xl p-4 text-center transition" :class="activeTab === tab.role
               ? 'bg-blue-600 text-white border-blue-600'
               : 'bg-white hover:bg-gray-100'
-          "
-        >
+            ">
 
           <div class="font-bold">
             {{ tab.title }}
@@ -57,12 +51,7 @@
               ชื่อ
             </label>
 
-            <input
-              v-model="form.fname"
-              type="text"
-              placeholder="ชื่อ"
-              class="w-full border rounded-lg px-4 py-3"
-            />
+            <input v-model="form.fname" type="text" placeholder="ชื่อ" class="w-full border rounded-lg px-4 py-3" />
 
           </div>
 
@@ -75,12 +64,7 @@
               นามสกุล
             </label>
 
-            <input
-              v-model="form.lname"
-              type="text"
-              placeholder="นามสกุล"
-              class="w-full border rounded-lg px-4 py-3"
-            />
+            <input v-model="form.lname" type="text" placeholder="นามสกุล" class="w-full border rounded-lg px-4 py-3" />
 
           </div>
 
@@ -95,17 +79,10 @@
             Username
           </label>
 
-          <input
-            v-model="form.username"
-            type="text"
-            placeholder="Username"
-            class="w-full border rounded-lg px-4 py-3"
-          />
+          <input v-model="form.username" type="text" placeholder="Username"
+            class="w-full border rounded-lg px-4 py-3" />
 
         </div>
-
-
-        <!-- Password -->
 
         <div class="mb-4">
 
@@ -113,61 +90,33 @@
             Password
           </label>
 
-          <input
-            v-model="form.password"
-            type="password"
-            placeholder="Password"
-            class="w-full border rounded-lg px-4 py-3"
-          />
-
+          <input v-model="form.password" type="password" placeholder="Password"
+            class="w-full border rounded-lg px-4 py-3" />
         </div>
-
-
-        <!-- Confirm Password -->
 
         <div class="mb-6">
 
           <label class="block mb-2 font-medium">
             ยืนยัน Password
           </label>
-
-          <input
-            v-model="form.confirmPassword"
-            type="password"
-            placeholder="ยืนยัน Password"
-            class="w-full border rounded-lg px-4 py-3"
-          />
+          <input v-model="form.confirmPassword" type="password" placeholder="ยืนยัน Password"
+            class="w-full border rounded-lg px-4 py-3" />
 
         </div>
 
-
-        <!-- Error -->
-
-        <div
-          v-if="error"
-          class="bg-red-100 text-red-600 p-3 rounded-lg mb-4"
-        >
+        <div v-if="error" class="bg-red-100 text-red-600 p-3 rounded-lg mb-4">
           {{ error }}
         </div>
 
 
         <!-- Success -->
 
-        <div
-          v-if="success"
-          class="bg-green-100 text-green-600 p-3 rounded-lg mb-4"
-        >
+        <div v-if="success" class="bg-green-100 text-green-600 p-3 rounded-lg mb-4">
           {{ success }}
         </div>
 
-
-        <!-- Submit -->
-
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
-        >
+        <button type="submit" :disabled="loading"
+          class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
 
           {{
             loading
@@ -188,10 +137,7 @@
           มีบัญชีแล้ว?
         </span>
 
-        <router-link
-          to="/login"
-          class="text-blue-600 font-medium ml-2"
-        >
+        <router-link to="/login" class="text-blue-600 font-medium ml-2">
           เข้าสู่ระบบ
         </router-link>
 
@@ -307,11 +253,8 @@ const signup = async () => {
 
   }
 
-
   try {
-
     loading.value = true;
-
 
     await axios.post(
       "http://localhost:3000/signup",
