@@ -1,123 +1,93 @@
 <template>
-  <div
-    class="min-h-screen w-screen bg-gray-100"
-    style="font-family: 'Prompt', sans-serif;"
-  >
+
+  <div class="min-h-screen bg-gray-100 p-8">
+
+    <h1 class="text-2xl font-bold mb-6">
+      แบบประเมินของฉัน
+    </h1>
 
     <!-- Loading -->
-    <div
-      v-if="loading"
-      class="flex items-center justify-center min-h-screen"
-    >
-      <div class="text-gray-500">
-        กำลังโหลดข้อมูล...
-      </div>
+    <div v-if="loading">
+      กำลังโหลดข้อมูล...
     </div>
-
 
     <!-- Error -->
-    <div
-      v-else-if="error"
-      class="flex items-center justify-center min-h-screen"
-    >
-      <div class="text-red-500">
-        {{ error }}
-      </div>
+    <div v-else-if="error" class="text-red-500">
+      {{ error }}
     </div>
 
+    <!-- รายการ -->
+    <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-    <!-- Form -->
-    <TeacherForm
-      v-else
-      :teacher="teacher"
-      :criteria="criteria"
-      @save-draft="saveDraft"
-      @submit="submitEvaluation"
-    />
+      <div v-for="item in assignments" :key="item.id" class="bg-white p-6 rounded-xl shadow">
 
+        <h2 class="text-xl font-bold">
+          {{ item.evaluatee_name }}
+        </h2>
 
-    <!-- Footer -->
-    <footer
-      class="bg-white text-center py-4 text-gray-500 text-sm mt-8"
-    >
-      © 2026 วิทยาลัยเทคนิคขอนแก่น — ระบบประเมินบุคลากร
-    </footer>
+        <p>
+          ภาควิชา: {{ item.department }}
+        </p>
+
+        <p>
+          รอบ: {{ item.period }}
+        </p>
+
+        <p>
+          สถานะ: {{ item.status }}
+        </p>
+
+        <button @click="openEvaluation(item.id)" class="bg-blue-500 text-white px-4 py-2 rounded">
+          ทำแบบประเมิน
+        </button>
+
+      </div>
+
+    </div>
 
   </div>
+
 </template>
 
 
 <script setup>
 
 import { ref, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import axios from "axios";
+import { useAuthStore } from "../../stores/auth.js";
 
-import TeacherForm from "../teacher/teacherForm.vue";
 
-
-// ==================================================
-// Router
-// ==================================================
-
-const route = useRoute();
 const router = useRouter();
+const auth = useAuthStore();
 
-
-// ==================================================
-// Data
-// ==================================================
-
-const teacher = ref(null);
-
-const criteria = ref([]);
-
+const assignments = ref([]);
 const loading = ref(true);
-
 const error = ref("");
 
-
-// ==================================================
-// API
-// ==================================================
-
-const API_URL = "http://localhost:3000/api";
+const API = "http://localhost:3000/api";
 
 
-// ==================================================
-// ดึงข้อมูลผู้รับการประเมิน
-// ==================================================
-
-const loadEvaluation = async () => {
-
-  loading.value = true;
-  error.value = "";
+async function loadAssignments() {
 
   try {
 
-    /*
-      route.params.id
-      คือ employee / assignment id
-    */
-
-    const id = route.params.id;
-
-    const response = await axios.get(
-      `${API_URL}/evaluation/${id}`
+    const res = await axios.get(
+      `${API}/evaluatee/assignments`,
+      {
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+        }
+      }
     );
 
-
-    teacher.value = response.data.teacher;
-
-    criteria.value = response.data.criteria;
-
+    assignments.value = res.data.data;
 
   } catch (err) {
 
     console.error(err);
 
-    error.value =
-      "ไม่สามารถโหลดข้อมูลการประเมินได้";
+    error.value = "ไม่สามารถโหลดข้อมูลได้";
 
   } finally {
 
@@ -125,64 +95,16 @@ const loadEvaluation = async () => {
 
   }
 
-};
+}
 
 
+function openEvaluation(id) {
+
+  router.push(`/evaluatee/assignments/${id}`);
+
+}
 
 
-const saveDraft = async (data) => {
-
-  try {
-
-    await axios.post(
-      `${API_URL}/self-assessment/draft`,
-      data
-    );
-
-    alert("บันทึกแบบร่างเรียบร้อยแล้ว");
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("ไม่สามารถบันทึกข้อมูลได้");
-
-  }
-
-};
-
-
-
-
-const submitEvaluation = async (data) => {
-
-  try {
-
-    await axios.post(
-      `${API_URL}/self-assessment/submit`,
-      data
-    );
-
-    alert("ส่งผลการประเมินเรียบร้อยแล้ว");
-
-    router.push("/evaluatee");
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("ไม่สามารถส่งผลการประเมินได้");
-
-  }
-
-};
-
-
-
-onMounted(() => {
-
-  loadEvaluation();
-
-});
+onMounted(loadAssignments);
 
 </script>

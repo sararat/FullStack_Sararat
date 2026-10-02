@@ -1,39 +1,47 @@
-import {
-  createRouter,
-  createWebHistory
-} from "vue-router";
-
+import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../src/stores/auth.js";
-// views
+
+// หน้าเว็บ
 import Main from "../src/views/main.vue";
-import NotFound from "../src/views/notfound.vue";
 import Signup from "../src/views/Signup.vue";
 import Login from "../src/views/Login.vue";
-// pages
+import NotFound from "../src/views/notfound.vue";
+
+
+// หน้าอื่น
 import ProfilePage from "../src/pages/profilepage.vue";
-// evaluator
+import Dashboard from "../src/pages/dashboard.vue";
+
+// Evaluator
 import EvaluationForm from "../src/components/evaluator/evaluationform.vue";
 import EvaluatorAssignments from "../src/components/evaluator/evaluatorAssignments.vue";
 
-// evaluatee
+// Evaluatee
 import TeachersAssignments from "../src/components/teacher/TeachersAssignments.vue";
 
+
+
 const routes = [
+
+  // หน้าแรก
   {
     path: "/",
     component: Main
   },
 
+  // Login
   {
     path: "/login",
     component: Login
   },
 
+  // Signup
   {
     path: "/signup",
     component: Signup
   },
 
+  // Profile
   {
     path: "/profile",
     component: ProfilePage,
@@ -42,27 +50,39 @@ const routes = [
     }
   },
 
+
+  // =========================
+  // Personnel
+  // =========================
+
   {
     path: "/personnel",
     name: "Personnel",
-    component: () =>
-      import("../src/pages/dashboard.vue"),
+    component: Dashboard,
     meta: {
       requiresAuth: true,
       role: "personnel"
     }
   },
 
+
+  // =========================
+  // Evaluator
+  // =========================
+
   {
     path: "/evaluator",
+    name: "Evaluator",
     component: EvaluatorAssignments,
     meta: {
       requiresAuth: true,
       role: "evaluator"
     }
   },
+
   {
     path: "/evaluator/assignments/:id",
+    name: "EvaluationForm",
     component: EvaluationForm,
     props: true,
     meta: {
@@ -71,28 +91,36 @@ const routes = [
     }
   },
 
+
+  // =========================
+  // Evaluatee
+  // =========================
+
   {
     path: "/evaluatee",
+    name: "Evaluatee",
     component: TeachersAssignments,
     meta: {
       requiresAuth: true,
       role: "evaluatee"
     }
   },
-  {
-    path: "/evaluatee/assignments/:id",
-    name: "EvaluateeAssignment",
-    component: TeachersAssignments,
-    props: true,
-    meta: {
-      requiresAuth: true,
-      role: "evaluatee"
-    }
-  },
+
+  // {
+  //   path: "/evaluatee/assignments/:id",
+  //   name: "EvaluateeAssignment",
+  //   component: EvaluateeEvaluation,
+  //   props: true,
+  //   meta: {
+  //     requiresAuth: true,
+  //     role: "evaluatee"
+  //   }
+  // },
+
   {
     path: "/reports",
-    component: () =>
-      import("../src/views/reports.vue"),
+    name: "Reports",
+    component: () => import("../src/views/reports.vue"),
     meta: {
       requiresAuth: true
     }
@@ -101,27 +129,51 @@ const routes = [
     path: "/:catchAll(.*)",
     component: NotFound
   }
+
 ];
 
+
 const router = createRouter({
+
   history: createWebHistory(),
+
   routes
+
 });
+
+
+// =========================
+// ตรวจสอบ Login + Role
+// =========================
 
 router.beforeEach((to) => {
+
   const auth = useAuthStore();
-  if (
-    to.meta.requiresAuth &&
-    !auth.isLogin
-  ) {
+
+
+  // ยังไม่ได้ Login
+  if (to.meta.requiresAuth && !auth.isLogin) {
+
     return "/login";
+
   }
 
-  if (to.meta.role) {
-    if (auth.role !== to.meta.role) {
-      return "/";
-    }
+
+  // Role ไม่ตรง
+  if (
+    to.meta.role &&
+    auth.role !== to.meta.role
+  ) {
+
+    return "/";
+
   }
+
+
   return true;
+
 });
+
+
 export default router;
+ 

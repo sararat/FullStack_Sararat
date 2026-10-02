@@ -1,31 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-100">
 
-    <!-- Header -->
-    <header
-      class="bg-white shadow px-10 py-4 flex justify-between items-center"
-    >
-      <h1 class="text-xl font-bold text-blue-600">
-        ระบบประเมินบุคลากร
-      </h1>
-
-      <div class="space-x-3">
-        <button
-          @click="goSignIn"
-          class="px-4 py-2 border rounded-lg"
-        >
-          Sign In
-        </button>
-
-        <button
-          @click="goSignUp"
-          class="px-4 py-2 bg-blue-500 text-white rounded-lg"
-        >
-          Sign Up
-        </button>
-      </div>
-    </header>
-
     <!-- Filter -->
     <section class="flex gap-4 justify-center py-6 flex-wrap">
 
@@ -183,7 +158,9 @@
 
 
 <script setup>
+import { useAuthStore } from "../../stores/auth.js"
 
+const auth = useAuthStore()
 import {
   ref,
   computed,
@@ -225,82 +202,34 @@ const API_URL = "http://localhost:3000/api";
 // =====================================================
 
 const loadAssignments = async () => {
-
-  loading.value = true;
-
-  error.value = "";
+  loading.value = true
+  error.value = ""
 
   try {
+    const res = await fetch(
+      `${API}/evaluator/assignments`,
+      {
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+        }
+      }
+    )
 
-    const response = await fetch(
-      `${API_URL}/evaluator/assignments`
-    );
-
-    if (!response.ok) {
-
-      throw new Error(
-        `HTTP Error ${response.status}`
-      );
-
+    if (!res.ok) {
+      throw new Error(`HTTP Error ${res.status}`)
     }
 
-    const data = await response.json();
+    const result = await res.json()
 
-    console.log(
-      "ข้อมูลจาก Backend:",
-      data
-    );
-
-
-    // รองรับทั้ง
-    // { data: [...] }
-    // และ [...]
-    const assignments =
-      Array.isArray(data)
-        ? data
-        : data.data || [];
-
-
-    users.value = assignments.map(item => ({
-
-      id: item.id,
-
-      name:
-        item.name ||
-        `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-
-      department:
-        item.department ||
-        "ไม่ระบุ",
-
-      period:
-        item.period ||
-        "ไม่ระบุ",
-
-      status:
-        item.status ||
-        "pending"
-
-    }));
-
+    users.value = result.data || []
 
   } catch (err) {
-
-    console.error(
-      "โหลดข้อมูลไม่สำเร็จ:",
-      err
-    );
-
-    error.value =
-      "ไม่สามารถโหลดข้อมูลจากฐานข้อมูลได้";
-
+    console.error("โหลดข้อมูลไม่สำเร็จ:", err)
+    error.value = "ไม่สามารถโหลดข้อมูลได้"
   } finally {
-
-    loading.value = false;
-
+    loading.value = false
   }
-
-};
+}
 
 
 // =====================================================
