@@ -16,28 +16,49 @@
       {{ error }}
     </div>
 
-    <!-- รายการ -->
-    <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- ไม่มีข้อมูล -->
+    <div
+      v-else-if="assignments.length === 0"
+      class="bg-white p-6 rounded-xl"
+    >
+      ยังไม่มีแบบประเมิน
+    </div>
 
-      <div v-for="item in assignments" :key="item.id" class="bg-white p-6 rounded-xl shadow">
+    <!-- ข้อมูล -->
+    <div
+      v-else
+      class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+    >
+
+      <div
+        v-for="item in assignments"
+        :key="item.id"
+        class="bg-white p-6 rounded-xl shadow"
+      >
 
         <h2 class="text-xl font-bold">
           {{ item.evaluatee_name }}
         </h2>
 
-        <p>
+        <p class="mt-2">
           ภาควิชา: {{ item.department }}
         </p>
 
         <p>
-          รอบ: {{ item.period }}
+          รอบการประเมิน: {{ item.period }}
         </p>
 
-        <p>
-          สถานะ: {{ item.status }}
+        <p class="mt-2">
+          สถานะ:
+          <span class="text-blue-600">
+            {{ item.status }}
+          </span>
         </p>
 
-        <button @click="openEvaluation(item.id)" class="bg-blue-500 text-white px-4 py-2 rounded">
+        <button
+          @click="openEvaluation(item.id)"
+          class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg"
+        >
           ทำแบบประเมิน
         </button>
 
@@ -55,14 +76,14 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
-import { useAuthStore } from "../../stores/auth.js";
 
 
 const router = useRouter();
-const auth = useAuthStore();
 
 const assignments = ref([]);
+
 const loading = ref(true);
+
 const error = ref("");
 
 const API = "http://localhost:3000/api";
@@ -72,22 +93,24 @@ async function loadAssignments() {
 
   try {
 
-    const res = await axios.get(
-      `${API}/evaluatee/assignments`,
-      {
-        headers: {
-          Authorization: `Bearer ${auth.token}`
-        }
-      }
+    const response = await axios.get(
+      `${API}/evaluatee/assignments`
     );
 
-    assignments.value = res.data.data;
+    console.log(
+      "ข้อมูลจาก Backend:",
+      response.data
+    );
+
+    assignments.value =
+      response.data.data || [];
 
   } catch (err) {
 
     console.error(err);
 
-    error.value = "ไม่สามารถโหลดข้อมูลได้";
+    error.value =
+      "ไม่สามารถโหลดข้อมูลได้";
 
   } finally {
 
@@ -100,11 +123,18 @@ async function loadAssignments() {
 
 function openEvaluation(id) {
 
-  router.push(`/evaluatee/assignments/${id}`);
+  router.push(
+    `/evaluatee/assignments/${id}`
+  );
 
 }
 
 
-onMounted(loadAssignments);
+onMounted(() => {
+
+  loadAssignments();
+
+});
 
 </script>
+ 

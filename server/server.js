@@ -213,37 +213,29 @@ app.get(
   }
 );
 
-app.get(
-  "/api/evaluatee/assignments",
-  auth,
-  role("evaluatee"),
-  async (req, res) => {
+app.get("/api/evaluatee/assignments", async (req, res) => {
 
-    try {
+  try {
 
-      const [rows] = await db.promise().query(
-        `SELECT *
-         FROM assignments
-         WHERE evaluatee_id = ?`,
-        [req.user.id]
-      );
+    const [rows] = await db.promise().query(
+      "SELECT * FROM assignments"
+    );
 
-      res.json({
-        data: rows
-      });
+    res.json({
+      data: rows
+    });
 
-    } catch (error) {
+  } catch (error) {
 
-      console.error(error);
+    console.error("ERROR:", error);
 
-      res.status(500).json({
-        message: "โหลดข้อมูลไม่สำเร็จ"
-      });
-
-    }
+    res.status(500).json({
+      message: error.message
+    });
 
   }
-);
+
+});
 // =====================
 // START SERVER
 // =====================

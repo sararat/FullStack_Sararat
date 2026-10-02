@@ -18,7 +18,7 @@ import EvaluatorAssignments from "../src/components/evaluator/evaluatorAssignmen
 
 // Evaluatee
 import TeachersAssignments from "../src/components/teacher/TeachersAssignments.vue";
-
+import EvaluateeEvaluation from "../src/components/teacher/EvaluateeEvaluation.vue";
 
 
 const routes = [
@@ -106,16 +106,16 @@ const routes = [
     }
   },
 
-  // {
-  //   path: "/evaluatee/assignments/:id",
-  //   name: "EvaluateeAssignment",
-  //   component: EvaluateeEvaluation,
-  //   props: true,
-  //   meta: {
-  //     requiresAuth: true,
-  //     role: "evaluatee"
-  //   }
-  // },
+  {
+     path: "/evaluatee/assignments/:id",
+     name: "EvaluateeAssignment",
+     component: EvaluateeEvaluation,
+     props: true,
+     meta: {
+       requiresAuth: true,
+       role: "evaluatee"
+     }
+   },
 
   {
     path: "/reports",
