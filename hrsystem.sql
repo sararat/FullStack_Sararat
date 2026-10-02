@@ -47,10 +47,11 @@ CREATE TABLE assignments (
     evaluatee_id INT,
     evaluatee_name VARCHAR(100),
     department VARCHAR(100),
+    period_id INT,
     period VARCHAR(100),
     status VARCHAR(30)
 );
 INSERT INTO assignments
-(evaluator_id, employee_id, period_id, status)
+(evaluator_id, evaluatee_id, evaluatee_name, department, period_id, period, status)
 VALUES
-(2, 5, 1, 'รอประเมิน');
+(2, 5, 'นายสมชาย ใจดี', 'เทคโนโลยีสารสนเทศ', 1, 'รอบที่ 1/2569', 'รอประเมิน');

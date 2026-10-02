@@ -171,47 +171,84 @@ app.get(
 // EVALUATOR
 // =====================
 
-app.get(
-  "/api/evaluator/assignments",
-  auth,
-  role("evaluator"),
-  async (req, res) => {
+app.get("/api/evaluation/:id", async (req, res) => {
 
-    try {
+  try {
+
+    // 1. หา assignment
+    const [assignments] = await db.promise().query(
+      "SELECT * FROM assignments WHERE id = ?",
+      [req.params.id]
+    );
+
+    if (assignments.length === 0) {
+
+      return res.status(404).json({
+        message: "ไม่พบแบบประเมิน"
+      });
+
+    }
+
+    const assignment = assignments[0];
+
+
+    // 2. หาหัวข้อของรอบนี้
+    const [topics] = await db.promise().query(
+      "SELECT * FROM evaluation_topics WHERE period_id = ?",
+      [assignment.period_id]
+    );
+
+
+    // 3. หาตัวชี้วัด
+    let indicators = [];
+
+    for (const topic of topics) {
 
       const [rows] = await db.promise().query(
-        `SELECT
-          a.id,
-          e.name,
-          d.name AS department,
-          p.name AS period,
-          a.status
-        FROM assignments a
-        JOIN employees e
-          ON a.employee_id = e.id
-        LEFT JOIN departments d
-          ON e.department_id = d.id
-        JOIN evaluation_periods p
-          ON a.period_id = p.id
-        WHERE a.evaluator_id = ?
-        ORDER BY a.id DESC`,
-        [req.user.id]
+        "SELECT * FROM evaluation_indicators WHERE topic_id = ?",
+        [topic.id]
       );
 
-      res.json({
-        data: rows
-      });
+      indicators.push(
+        ...rows.map(item => ({
+          ...item,
+          topic_name: topic.name
+        }))
+      );
 
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-        message: "โหลดข้อมูลไม่สำเร็จ"
-      });
     }
+
+
+    // 4. ส่งข้อมูลกลับ Vue
+    res.json({
+
+      data: {
+
+        id: assignment.id,
+
+        name: assignment.evaluatee_name,
+
+        department: assignment.department,
+
+        period: assignment.period,
+
+        indicators: indicators
+
+      }
+
+    });
+
+  } catch (error) {
+
+    console.error("EVALUATION ERROR:", error);
+
+    res.status(500).json({
+      message: error.message
+    });
+
   }
-);
+
+});
 
 app.get("/api/evaluatee/assignments", async (req, res) => {
 
