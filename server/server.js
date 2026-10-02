@@ -19,45 +19,6 @@ app.use(express.json());
 
 
 // =====================
-// JWT
-// =====================
-
-function auth(req, res, next) {
-
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token)
-    return res.status(401).json({
-      message: "กรุณาเข้าสู่ระบบ"
-    });
-
-  try {
-    req.user = jwt.verify(token, SECRET);
-    next();
-  } catch {
-    res.status(401).json({
-      message: "Token ไม่ถูกต้อง"
-    });
-  }
-}
-
-
-// ตรวจสอบ Role
-function role(name) {
-
-  return (req, res, next) => {
-
-    if (req.user.role !== name)
-      return res.status(403).json({
-        message: "ไม่มีสิทธิ์"
-      });
-
-    next();
-  };
-}
-
-
-// =====================
 // TEST
 // =====================
 
@@ -76,22 +37,24 @@ app.post("/login", async (req, res) => {
 
   const { username, password } = req.body;
 
-  if (!username || !password)
+  if (!username || !password) {
     return res.status(400).json({
       message: "กรุณากรอกข้อมูล"
     });
+  }
 
   try {
 
     const [rows] = await db.promise().query(
-      `SELECT * FROM users WHERE username = ?`,
+      "SELECT * FROM users WHERE username = ?",
       [username]
     );
 
-    if (!rows.length)
+    if (rows.length === 0) {
       return res.status(401).json({
         message: "Username หรือ Password ไม่ถูกต้อง"
       });
+    }
 
     const user = rows[0];
 
@@ -100,10 +63,11 @@ app.post("/login", async (req, res) => {
       user.password
     );
 
-    if (!valid)
+    if (!valid) {
       return res.status(401).json({
         message: "Username หรือ Password ไม่ถูกต้อง"
       });
+    }
 
     const token = jwt.sign(
       {
@@ -112,12 +76,15 @@ app.post("/login", async (req, res) => {
         role: user.role
       },
       SECRET,
-      { expiresIn: "8h" }
+      {
+        expiresIn: "8h"
+      }
     );
 
     res.json({
       success: true,
       token,
+
       user: {
         id: user.id,
         fname: user.fname,
@@ -129,53 +96,145 @@ app.post("/login", async (req, res) => {
 
   } catch (error) {
 
-    console.error(error);
+    console.error("LOGIN ERROR:", error);
 
     res.status(500).json({
       message: "เกิดข้อผิดพลาด"
     });
+
   }
+
 });
 
 
 // =====================
-// USERS
+// SIGNUP
 // =====================
 
-app.get(
-  "/users",
-  auth,
-  role("personnel"),
-  async (req, res) => {
+app.post("/signup", async (req, res) => {
 
-    try {
+  const {
+    fname,
+    lname,
+    username,
+    password,
+    role
+  } = req.body;
 
-      const [rows] = await db.promise().query(
-        `SELECT id, fname, lname, username, role
-         FROM users`
-      );
+  if (
+    !fname ||
+    !lname ||
+    !username ||
+    !password ||
+    !role
+  ) {
+    return res.status(400).json({
+      message: "กรุณากรอกข้อมูลให้ครบ"
+    });
+  }
 
-      res.json(rows);
+  const roles = [
+    "personnel",
+    "evaluator",
+    "evaluatee"
+  ];
 
-    } catch {
+  if (!roles.includes(role)) {
+    return res.status(400).json({
+      message: "Role ไม่ถูกต้อง"
+    });
+  }
 
-      res.status(500).json({
-        message: "โหลดข้อมูลไม่สำเร็จ"
+  try {
+
+    // ตรวจสอบ Username ซ้ำ
+    const [users] = await db.promise().query(
+      "SELECT id FROM users WHERE username = ?",
+      [username]
+    );
+
+    if (users.length > 0) {
+      return res.status(400).json({
+        message: "Username นี้มีผู้ใช้งานแล้ว"
       });
     }
+
+    // เข้ารหัส Password
+    const hashPassword = await bcrypt.hash(
+      password,
+      10
+    );
+
+    // บันทึกข้อมูล
+    await db.promise().query(
+      `INSERT INTO users
+      (fname, lname, username, password, role)
+      VALUES (?, ?, ?, ?, ?)`,
+      [
+        fname,
+        lname,
+        username,
+        hashPassword,
+        role
+      ]
+    );
+
+    res.json({
+      success: true,
+      message: "สมัครสมาชิกเรียบร้อยแล้ว"
+    });
+
+  } catch (error) {
+
+    console.error("SIGNUP ERROR:", error);
+
+    res.status(500).json({
+      message: "สมัครสมาชิกไม่สำเร็จ"
+    });
+
   }
-);
+
+});
 
 
 // =====================
-// EVALUATOR
+// EVALUATEE ASSIGNMENTS
+// =====================
+
+app.get("/api/evaluatee/assignments", async (req, res) => {
+
+  try {
+
+    const [rows] = await db.promise().query(
+      "SELECT * FROM assignments"
+    );
+
+    res.json({
+      data: rows
+    });
+
+  } catch (error) {
+
+    console.error("ASSIGNMENTS ERROR:", error);
+
+    res.status(500).json({
+      message: "โหลดข้อมูลไม่สำเร็จ"
+    });
+
+  }
+
+});
+
+
+// =====================
+// EVALUATION
 // =====================
 
 app.get("/api/evaluation/:id", async (req, res) => {
 
   try {
 
-    // 1. หา assignment
+    // 1. หาแบบประเมิน
     const [assignments] = await db.promise().query(
       "SELECT * FROM assignments WHERE id = ?",
       [req.params.id]
@@ -192,7 +251,7 @@ app.get("/api/evaluation/:id", async (req, res) => {
     const assignment = assignments[0];
 
 
-    // 2. หาหัวข้อของรอบนี้
+    // 2. หาหัวข้อการประเมิน
     const [topics] = await db.promise().query(
       "SELECT * FROM evaluation_topics WHERE period_id = ?",
       [assignment.period_id]
@@ -243,40 +302,23 @@ app.get("/api/evaluation/:id", async (req, res) => {
     console.error("EVALUATION ERROR:", error);
 
     res.status(500).json({
-      message: error.message
+      message: "โหลดแบบประเมินไม่สำเร็จ"
     });
 
   }
 
 });
 
-app.get("/api/evaluatee/assignments", async (req, res) => {
 
-  try {
-
-    const [rows] = await db.promise().query(
-      "SELECT * FROM assignments"
-    );
-
-    res.json({
-      data: rows
-    });
-
-  } catch (error) {
-
-    console.error("ERROR:", error);
-
-    res.status(500).json({
-      message: error.message
-    });
-
-  }
-
-});
 // =====================
 // START SERVER
 // =====================
 
 app.listen(PORT, () => {
-  console.log(`Server: http://localhost:${PORT}`);
+
+  console.log(
+    `Server: http://localhost:${PORT}`
+  );
+
 });
+ 
